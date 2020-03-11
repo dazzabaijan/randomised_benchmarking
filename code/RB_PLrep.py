@@ -283,6 +283,13 @@ def gen_truncated(minimum, maximum, ave, sigma):
     
     return x
 
+def gen_truncated2(minimum, maximum, ave, sigma, samp_size):
+    #(0.05, 0.05, 0.985, 0.15) 0.9, 1 
+    einval = np.random.normal(ave, sigma, 10000)
+    index = (einval > minimum) & (einval < maximum)
+    return einval[index]
+    # return np.random.choice(a[index], samp_size, replace=False)
+
 def get_tau(einval1, einval2, einval3):
     max_tau1 = 1 - abs(einval1)
     max_tau2 = 1 - abs(einval2)
@@ -714,9 +721,9 @@ def ascending_plot(exps, end_point, stepsize, input_state, noise_mean,
 starttime = time.time()
 # randomized_benchmarking2(np.array([[1],[0],[0],[0]]), 100, 10, 1, 0.1, 3,
 #                           np.array([[0],[0],[0],[1]]))
-length, fidelity, seq_len = get_data2(np.array([[1],[0],[0],[0]]), 200,
-                                          100, 1, 0.1, 1, 3,
-                                          np.array([[0],[0],[0],[1]]))
+length, fidelity, seq_len = get_data2(np.array([[1],[0],[0],[0]]), 100,
+                                      10, 1, 0.1, 1, 3,
+                                      np.array([[0],[0],[0],[1]]))
 ideal_fid_fit = fit_curve(length, fidelity, seq_len, 1, plot=True)
 # length, fidelity, seq_length, ideal_fid = get_data(up_spin,
 #                                                   200,
