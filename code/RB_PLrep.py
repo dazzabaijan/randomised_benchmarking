@@ -399,6 +399,40 @@ def create_rotation(angles: np.ndarray) -> np.ndarray:
     
     return rotation
 
+def create_rotation2(samp_size, r) -> np.ndarray:
+    
+    angles = np.random.normal(0,1,(3,samp_size))*r
+    sin_angles = np.sin(angles)
+    cos_angles = np.cos(angles)
+    
+    left_angles = np.array([[cos_angles[0], -sin_angles[0]],
+                            [sin_angles[0], cos_angles[0]]])
+    mid_angles = np.array([[cos_angles[1], -sin_angles[1]],
+                           [sin_angles[1], cos_angles[1]]])
+    right_angles = np.array([[cos_angles[2], -sin_angles[2]],
+                            [sin_angles[2], cos_angles[2]]])
+    
+    left = np.zeros((samp_size, 3, 3))
+    left[:, 0:2, 0:2] = left_angles.T
+    left[range(0, samp_size), 2:3, 2:3] = np.ones((samp_size, 1, 1))
+    
+    mid = np.zeros((samp_size, 3, 3))
+    mid[:, 1:3, 1:3] = mid_angles.T
+    mid[range(0, samp_size), 0:1, 0:1] = np.ones((samp_size, 1, 1))
+    
+    right = np.zeros((samp_size, 3, 3))
+    right[:, 0:2, 0:2] = right_angles.T
+    right[range(0, samp_size), 2:3, 2:3] = np.ones((samp_size, 1, 1))
+    
+    rotation = np.zeros((samp_size, 4, 4))
+    rotation[:, 1:4, 1:4] = left@mid@right
+    rotation[range(0, samp_size), 0:1, 0:1] = np.ones((samp_size, 1, 1))
+    
+    # rotation = init_tensor(np.eye(4), samp_size)
+    return rotation
+
+
+
 def gen_channel(r1, r2, ave, sigma):
     rand1 = np.random.normal(0,1,3)
     rand2 = np.random.normal(0,1,3)
