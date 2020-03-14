@@ -244,104 +244,42 @@ def operator_groups2(sample_size, n):
                              for i in range(len(gate_set))])
         return gate_set[np.random.choice(gate_set.shape[0], sample_size)]
 
-# def randomized_benchmarking2(input_state: np.ndarray, seq_len, int,
-#                               samp_size: int, noise_mean: float,
-#                               noise_sd: float, n: int):
-#     sequence = []
-#     gate_set = non_clifford_group(n)
-#     for i in range(1, samp_size+1):
-#         composite_gate = np.eye(4, dtype=complex)
-#         for j in range(1, seq_len+1):
-#             q_gate = gate_set[np.random.choice(gate_set.shape[0], 1)]
-#             sequence.append(q_gate)
-#             pl_gate = pl_rep_operation(q_gate)
-#             composite_gate = pl_gate@composite_gate
-#     return
 
-def gen_truncated(minimum, maximum, ave, sigma):
-    # min=0.9, max=1, 
-    x = 0.
-    while x < minimum or x > maximum:
-        x = np.random.normal(0,1)*sigma+ave
-    
-    return x
-
-def gen_truncated2(minimum, maximum, ave, sigma, max_size):
+def gen_truncated(minimum, maximum, ave, sigma, max_size):
     #(0.05, 0.05, 0.985, 0.15) 0.9, 1 
     einval = np.random.normal(ave, sigma, max_size)
     index = (einval > minimum) & (einval < maximum)
     return einval[index]
 
-def get_tau(einval1, einval2, einval3):
-    max_tau1 = 1 - abs(einval1)
-    max_tau2 = 1 - abs(einval2)
-    max_tau3 = 1 - abs(einval3)
-    tau1 = max_tau1*(2*np.random.uniform(0,1)-1)
-    tau2 = max_tau2*(2*np.random.uniform(0,1)-1)
-    tau3 = max_tau3*(2*np.random.uniform(0,1)-1)
-    
-    return [tau1, tau2, tau3]
 
-def get_tau2(einval1, einval2, einval3):
+def get_tau(einval1, einval2, einval3):
     max_tau = 1 - abs(np.array([einval1, einval2, einval3]))
     tau = max_tau*(2*np.random.uniform(0,1,(3,max_tau.shape[1]))-1)
     
     return tau
 
-def q(e: np.ndarray):
-    # e are the eigenvalues
-    return (1+e[0]+e[1]+e[2])*(1+e[0]-e[1]-e[2])*(1-e[0]+e[1]-e[2])*(1-e[0]-e[1]+e[2])
-
-def q2(e):
+def q(e):
     return (1+e[0,:]+e[1,:]+e[2,:])*(1+e[0,:]-e[1,:]-e[2,:])*\
            (1-e[0,:]+e[1,:]-e[2,:])*(1-e[0,:]-e[1,:]+e[2,:])
 
-def z_eta(t: np.ndarray, l: np.ndarray):
-    condition = (norm(t)**4 - 2*norm(t)**2 -
-                 2*sum([(l[i]**2)*(2*(t[i]**2-norm(t)**2)) for i in range(3)])+
-                 q(l))
-    return condition
 
-def z_eta2(t: np.ndarray, l: np.ndarray):
+def z_eta(t: np.ndarray, l: np.ndarray):
     norm_t = norm(t, axis=0)
     sum_term = [(l[i,:]**2)*(2*(t[i,:]**2) - norm_t**2) for i in range(3)]
-    condition = (norm_t**4 - 2*norm_t**2 - 2*np.sum(sum_term, axis=0) + q2(l))
+    condition = (norm_t**4 - 2*norm_t**2 - 2*np.sum(sum_term, axis=0) + q(l))
     
     return condition
 
 
-def gen_sigma(minimum, maximum, ave, sigma):
-    lambda1 = gen_truncated(minimum, maximum, ave, sigma)
-    lambda2 = gen_truncated(minimum, maximum, ave, sigma)
-    lambda3 = gen_truncated(minimum, maximum, ave, sigma)
-    
-    while 1+lambda3 < abs(lambda1+lambda2) or 1-lambda3 < abs(lambda2-lambda1):
-        lambda3 = gen_truncated(minimum, maximum, ave, sigma)
-    
-    tau = get_tau(lambda1, lambda2, lambda3)
-    lambdas = [lambda1, lambda2, lambda3]
-    while (norm(tau)**2 >
-           1-sum([x**2 for x in [lambda1, lambda2, lambda3]]) + 
-           2*lambda1*lambda2*lambda3) or (z_eta(tau, lambdas) < 0):
-        tau = get_tau(lambda1, lambda2, lambda3)
-    
-    sigma_gen = np.array([[     1,       0, 0, 0],
-                          [tau[0], lambda1, 0, 0],
-                          [tau[1], 0, lambda2, 0],
-                          [tau[2], 0, 0, lambda3]])
-    
-    return sigma_gen
-
-
-def gen_sigma2(minimum, maximum, ave, sigma, max_size, samp_size):
-    lambda1 = gen_truncated2(minimum, maximum, ave, sigma, max_size)
-    lambda2 = gen_truncated2(minimum, maximum, ave, sigma, max_size)
+def gen_sigma(minimum, maximum, ave, sigma, max_size, samp_size):
+    lambda1 = gen_truncated(minimum, maximum, ave, sigma, max_size)
+    lambda2 = gen_truncated(minimum, maximum, ave, sigma, max_size)
     if len(lambda1) < len(lambda2):
         lambda2 = lambda2[0:len(lambda1)]
     else:
         lambda1 = lambda1[0:len(lambda2)]
 
-    lambda3 = gen_truncated2(minimum, maximum, ave, sigma, max_size)
+    lambda3 = gen_truncated(minimum, maximum, ave, sigma, max_size)
         
     if len(lambda1) < len(lambda3):
         lambda3 = lambda3[0:len(lambda1)]
@@ -353,12 +291,12 @@ def gen_sigma2(minimum, maximum, ave, sigma, max_size, samp_size):
             (1-lambda3 > abs(lambda2-lambda1))
     
     lambda1, lambda2, lambda3 = lambda1[index], lambda2[index], lambda3[index]
-    tau = get_tau2(lambda1, lambda2, lambda3)
+    tau = get_tau(lambda1, lambda2, lambda3)
     lambdas = np.array([lambda1, lambda2, lambda3])
     
     cond = norm(tau, axis=0)**2 < (1 - np.sum(np.square(lambdas), axis=0) + \
                                   2*lambda1*lambda2*lambda3)
-    index = cond & (z_eta2(tau, lambdas) > 0)
+    index = cond & (z_eta(tau, lambdas) > 0)
 
     tau = tau[:,index]
     lambda1, lambda2, lambda3 = lambda1[index], lambda2[index], lambda3[index]
@@ -381,24 +319,8 @@ def gen_sigma2(minimum, maximum, ave, sigma, max_size, samp_size):
     
     return sigma_gen
 
-def create_rotation(angles: np.ndarray) -> np.ndarray:
-    "random rotation in PL form"
-    # input np.random.normal(0,1,3)*0.06
-    rotation = np.eye(4, dtype=complex)
-    left = np.array([[ np.cos(angles[0]), np.sin(angles[0]), 0],
-                     [-np.sin(angles[0]), np.cos(angles[0]), 0],
-                     [                 0,                 0, 1]])
-    mid = np.array([[1,                 0,                 0],
-                    [0, np.cos(angles[1]), np.sin(angles[1])],
-                    [0, -np.sin(angles[1]), np.cos(angles[1])]])
-    right = np.array([[ np.cos(angles[2]), np.sin(angles[2]), 0],
-                      [-np.sin(angles[2]), np.cos(angles[2]), 0],
-                      [                 0,                 0, 1]])
-    rotation[1:4,1:4] = left@mid@right
-    
-    return rotation
 
-def create_rotation2(samp_size, r) -> np.ndarray:
+def create_rotation(samp_size, r) -> np.ndarray:
     
     angles = np.random.normal(0,1,(3,samp_size))*r
     sin_angles = np.sin(angles)
@@ -431,20 +353,12 @@ def create_rotation2(samp_size, r) -> np.ndarray:
     return rotation
 
 
-def gen_channel2(r1, r2, ave, sigma, max_size, samp_size):
+def gen_channel(r1, r2, ave, sigma, max_size, samp_size):
     
-    channel = create_rotation2(samp_size, r1)@\
-              gen_sigma2(0.9, 1, ave, sigma, max_size, samp_size)@\
-              create_rotation2(samp_size, r2)
+    channel = create_rotation(samp_size, r1)@\
+              gen_sigma(0.9, 1, ave, sigma, max_size, samp_size)@\
+              create_rotation(samp_size, r2)
     
-    return channel
-    
-
-def gen_channel(r1, r2, ave, sigma):
-    rand1 = np.random.normal(0,1,3)
-    rand2 = np.random.normal(0,1,3)
-    channel = create_rotation(rand1*r1)@gen_sigma(0.9, 1, ave, sigma)@\
-              create_rotation(rand2*r2)
     return channel
 
 
@@ -467,11 +381,11 @@ def randomized_benchmarking2(input_state: np.ndarray, seq_len: int,
         # unit_noise = unitary_error(noise_sd, samp_size)
         # unit_noise = np.array([np.kron(unit_noise[i], unit_noise[i].conj())
         #                         for i in range(len(unit_noise))])
-        unit_noise = gen_channel2(0.06, 0.06, 0.998, 0.04, 10000, samp_size)
+        unit_noise = gen_channel(0.06, 0.06, 0.998, 0.04, 10000, samp_size)
         channel1 = unit_noise@q_gates@channel1
 
         # unit_noise2 = np.array([gen_channel(0.06, 0.06, 0.998, 0.04) for i in range(samp_size)])        
-        unit_noise2 = gen_channel2(0.06, 0.06, 0.998, 0.04, 10000, samp_size)        
+        unit_noise2 = gen_channel(0.06, 0.06, 0.998, 0.04, 10000, samp_size)        
         # unit_noise2 = unitary_error(noise_sd, samp_size)
         # unit_noise2 = np.array([np.kron(unit_noise2[i], unit_noise2[i].conj())
         #                        for i in range(len(unit_noise2))])
@@ -488,18 +402,14 @@ def randomized_benchmarking2(input_state: np.ndarray, seq_len: int,
     
     seq_adjoint = inverse_gate.transpose(0, 2, 1).conj()
     
-    # prep_noise = np.array([gen_channel(0.05, 0.05, 0.985, 0.15) for i in range(samp_size)])
-    # prep_noise2 = np.array([gen_channel(0.05, 0.05, 0.985, 0.15) for i in range(samp_size)])
-    prep_noise = gen_channel2(0.05, 0.05, 0.985, 0.15, 10000, samp_size)
-    prep_noise2 = gen_channel2(0.05, 0.05, 0.985, 0.15, 10000, samp_size)
+    prep_noise = gen_channel(0.05, 0.05, 0.985, 0.15, 10000, samp_size)
+    prep_noise2 = gen_channel(0.05, 0.05, 0.985, 0.15, 10000, samp_size)
     
     output_state_up = seq_adjoint@channel1@prep_noise@rho_tensor
     output_state_down = seq_adjoint@channel2@prep_noise2@rho_tensor_2
 
-    # meas_noise = np.array([gen_channel(0.05, 0.05, 0.98, 0.15) for i in range(samp_size)])
-    # meas_noise2 = np.array([gen_channel(0.05, 0.05, 0.98, 0.15) for i in range(samp_size)])
-    meas_noise = gen_channel2(0.05, 0.05, 0.98, 0.15, 10000, samp_size)
-    meas_noise2 = gen_channel2(0.05, 0.05, 0.98, 0.15, 10000, samp_size)
+    meas_noise = gen_channel(0.05, 0.05, 0.98, 0.15, 10000, samp_size)
+    meas_noise2 = gen_channel(0.05, 0.05, 0.98, 0.15, 10000, samp_size)
     
     measure_up = init_tensor(np.array([Z.flatten()]),samp_size)
     measure_down = init_tensor(np.array([Z.flatten()]),samp_size)
