@@ -377,24 +377,13 @@ def randomized_benchmarking2(input_state: np.ndarray, seq_len: int,
     
     for j in range(1, seq_len+1):
         q_gates = operator_groups2(samp_size, n)
-        # unit_noise = np.array([gen_channel(0.06, 0.06, 0.998, 0.04) for i in range(samp_size)])
-        # unit_noise = unitary_error(noise_sd, samp_size)
-        # unit_noise = np.array([np.kron(unit_noise[i], unit_noise[i].conj())
-        #                         for i in range(len(unit_noise))])
         unit_noise = gen_channel(0.06, 0.06, 0.998, 0.04, 10000, samp_size)
         channel1 = unit_noise@q_gates@channel1
 
-        # unit_noise2 = np.array([gen_channel(0.06, 0.06, 0.998, 0.04) for i in range(samp_size)])        
         unit_noise2 = gen_channel(0.06, 0.06, 0.998, 0.04, 10000, samp_size)        
-        # unit_noise2 = unitary_error(noise_sd, samp_size)
-        # unit_noise2 = np.array([np.kron(unit_noise2[i], unit_noise2[i].conj())
-        #                        for i in range(len(unit_noise2))])
         channel2 = unit_noise2@q_gates@channel2
         seq.append(q_gates)
-        
-        # noisy_seq.append(unit_noise@q_gates)
-        # noisy_seq2.append(unit_noise2@q_gates)
-    
+            
     inverse_gate = np.array(seq[::-1])[0]
     for el in np.array(seq[::-1])[1:]:
         inverse_gate = inverse_gate@el
