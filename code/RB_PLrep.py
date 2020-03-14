@@ -374,8 +374,7 @@ def gen_sigma2(minimum, maximum, ave, sigma, max_size, samp_size):
     lambda2 = lambda2[0:samp_size]
     lambda3 = lambda3[0:samp_size]
     lambdas = np.array([lambda1, lambda2, lambda3])
-    print(lambdas)
-    print(tau)
+
     sigma_gen = np.zeros((samp_size, 4, 4))
     sigma_gen[:, range(1, 4), range(1, 4)] = lambdas.T
     sigma_gen[:, :, 0] = tau.T
@@ -432,6 +431,14 @@ def create_rotation2(samp_size, r) -> np.ndarray:
     return rotation
 
 
+def gen_channel2(r1, r2, ave, sigma, max_size, samp_size):
+    
+    channel = create_rotation2(samp_size, r1)@\
+              gen_sigma2(0.9, 1, ave, sigma, max_size, samp_size)@\
+              create_rotation2(samp_size, r2)
+    
+    return channel
+    
 
 def gen_channel(r1, r2, ave, sigma):
     rand1 = np.random.normal(0,1,3)
@@ -445,8 +452,6 @@ def randomized_benchmarking2(input_state: np.ndarray, seq_len: int,
                              samp_size: int, noise_mean: float,
                              noise_sd: float, n: int, input_state_2):
     seq = []
-    noisy_seq = []
-    noisy_seq2 = []
     # input state needs to be 1x4 matrix
     rho_tensor = init_tensor(input_state, samp_size)
     
@@ -458,13 +463,15 @@ def randomized_benchmarking2(input_state: np.ndarray, seq_len: int,
     
     for j in range(1, seq_len+1):
         q_gates = operator_groups2(samp_size, n)
-        unit_noise = np.array([gen_channel(0.06, 0.06, 0.998, 0.04) for i in range(samp_size)])
+        # unit_noise = np.array([gen_channel(0.06, 0.06, 0.998, 0.04) for i in range(samp_size)])
         # unit_noise = unitary_error(noise_sd, samp_size)
         # unit_noise = np.array([np.kron(unit_noise[i], unit_noise[i].conj())
         #                         for i in range(len(unit_noise))])
+        unit_noise = gen_channel2(0.06, 0.06, 0.998, 0.04, 10000, samp_size)
         channel1 = unit_noise@q_gates@channel1
 
-        unit_noise2 = np.array([gen_channel(0.06, 0.06, 0.998, 0.04) for i in range(samp_size)])        
+        # unit_noise2 = np.array([gen_channel(0.06, 0.06, 0.998, 0.04) for i in range(samp_size)])        
+        unit_noise2 = gen_channel2(0.06, 0.06, 0.998, 0.04, 10000, samp_size)        
         # unit_noise2 = unitary_error(noise_sd, samp_size)
         # unit_noise2 = np.array([np.kron(unit_noise2[i], unit_noise2[i].conj())
         #                        for i in range(len(unit_noise2))])
@@ -481,13 +488,19 @@ def randomized_benchmarking2(input_state: np.ndarray, seq_len: int,
     
     seq_adjoint = inverse_gate.transpose(0, 2, 1).conj()
     
-    prep_noise = np.array([gen_channel(0.05, 0.05, 0.985, 0.15) for i in range(samp_size)])
-    prep_noise2 = np.array([gen_channel(0.05, 0.05, 0.985, 0.15) for i in range(samp_size)])
+    # prep_noise = np.array([gen_channel(0.05, 0.05, 0.985, 0.15) for i in range(samp_size)])
+    # prep_noise2 = np.array([gen_channel(0.05, 0.05, 0.985, 0.15) for i in range(samp_size)])
+    prep_noise = gen_channel2(0.05, 0.05, 0.985, 0.15, 10000, samp_size)
+    prep_noise2 = gen_channel2(0.05, 0.05, 0.985, 0.15, 10000, samp_size)
+    
     output_state_up = seq_adjoint@channel1@prep_noise@rho_tensor
     output_state_down = seq_adjoint@channel2@prep_noise2@rho_tensor_2
 
-    meas_noise = np.array([gen_channel(0.05, 0.05, 0.98, 0.15) for i in range(samp_size)])
-    meas_noise2 = np.array([gen_channel(0.05, 0.05, 0.98, 0.15) for i in range(samp_size)])
+    # meas_noise = np.array([gen_channel(0.05, 0.05, 0.98, 0.15) for i in range(samp_size)])
+    # meas_noise2 = np.array([gen_channel(0.05, 0.05, 0.98, 0.15) for i in range(samp_size)])
+    meas_noise = gen_channel2(0.05, 0.05, 0.98, 0.15, 10000, samp_size)
+    meas_noise2 = gen_channel2(0.05, 0.05, 0.98, 0.15, 10000, samp_size)
+    
     measure_up = init_tensor(np.array([Z.flatten()]),samp_size)
     measure_down = init_tensor(np.array([Z.flatten()]),samp_size)
 
@@ -806,7 +819,7 @@ starttime = time.time()
 # randomized_benchmarking2(np.array([[1],[0],[0],[0]]), 100, 10, 1, 0.1, 3,
 #                           np.array([[0],[0],[0],[1]]))
 length, fidelity, seq_len = get_data2(np.array([[1],[0],[0],[0]]), 100,
-                                      10, 1, 0.1, 1, 3,
+                                      50, 1, 0.1, 1, 3,
                                       np.array([[0],[0],[0],[1]]))
 ideal_fid_fit = fit_curve(length, fidelity, seq_len, 1, plot=True)
 # length, fidelity, seq_length, ideal_fid = get_data(up_spin,
